@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spotify Fair Artist Shuffle</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b0f14,#0b0f14 60%,#0e1420);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji"}
+    header{padding:24px 16px;max-width:960px;margin:0 auto}
+    h1{margin:0 0 8px;font-size:28px}
+    .sub{color:var(--muted);font-size:14px}
+    main{max-width:960px;margin:0 auto;padding:0 16px 80px}
+    .card{background:var(--card);border:1px solid #1c2734;border-radius:16px;padding:16px 16px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);margin:16px 0}
+    label{display:block;margin:8px 0 4px;color:#c8d6e5}
+    select, input[type=text]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #263445;background:#0c121a;color:var(--text)}
+    button{appearance:none;border:0;border-radius:999px;padding:10px 16px;background:var(--accent);color:#082412;font-weight:700;cursor:pointer}
+    button[disabled]{opacity:.5;cursor:not-allowed}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row>*{flex:1 1 260px}
+    .muted{color:var(--muted)}
+    .danger{background:var(--danger);color:#2b0d0d}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:#0c121a;border:1px solid #263445}
+    .hidden{display:none}
+    progress{width:100%;height:14px}
+    .logs{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;white-space:pre-wrap;background:#0c121a;border:1px solid #263445;border-radius:12px;padding:12px;color:#cfe3ff}
+    a.link{color:#7ed7ff}
+    footer{max-width:960px;margin:32px auto;padding:0 16px 24px;color:var(--muted)}
+  </style>
+  <script src="https://cdn.counter.dev/script.js" data-id="4efac50c-1140-4ff2-b4bb-b3459acc6129" data-utcoffset="1"></script>
+</head>
+<body>
+  <header>
+    <h1>Spotify Fair Artist Shuffle</h1>
+    <div class="sub">Evenly space artists through your playlist.</div>
+  </header>
+
+  <main>
+    <div class="card" id="authCard">
+      <div class="row" style="align-items:center">
+        <div>
+          <div class="muted">Step 1</div>
+          <h3 style="margin:4px 0 8px">Connect your Spotify</h3>
+          <p class="muted">Click the button and approve access. You can disconnect anytime from your <a class="link" href="https://www.spotify.com/account/apps/" target="_blank" rel="noopener">Spotify Apps</a> page.</p>
+        </div>
+        <div style="min-width:220px;display:flex;gap:8px;align-items:center;justify-content:flex-end">
+          <button id="loginBtn">Log in with Spotify</button>
+          <button id="logoutBtn" class="danger hidden">Log out</button>
+        </div>
+      </div>
+      <div id="whoami" class="muted hidden"></div>
+    </div>
+
+    <div class="card hidden" id="playlistCard">
+      <div class="row">
+        <div>
+          <label for="playlistSel">Step 2 — Choose a playlist</label>
+          <select id="playlistSel"></select>
+          <div class="muted" id="playlistMeta" style="margin-top:6px"></div>
+        </div>
+        <div>
+          <label for="createName">New playlist name (output)</label>
+          <input id="createName" type="text" placeholder="e.g., Fair Shuffle — {Original Name}" />
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="analyzeBtn">Analyze & preview</button>
+        <button id="shuffleBtn" disabled>Shuffle & create playlist</button>
+        <span class="pill"><span id="counts">—</span></span>
+      </div>
+    </div>
+
+    <div class="card hidden" id="previewCard">
+      <h3 style="margin:4px 0 8px">Step 3 — Preview & confirm</h3>
+      <div class="muted">We'll evenly distribute songs by the same artist using their ideal spacing. The preview shows the first 50 items of the new order.</div>
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>Original (first 50)</label>
+          <ol id="origList"></ol>
+        </div>
+        <div>
+          <label>Proposed order (first 50)</label>
+          <ol id="newList"></ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="progressCard">
+      <h3 style="margin:4px 0 8px">Working…</h3>
+      <progress id="progress" max="100" value="0"></progress>
+      <div id="log" class="logs" style="margin-top:10px;min-height:80px"></div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="muted">
+      Tip: Large playlists are processed in chunks of 50 tracks (reading) and 100 tracks (writing) to respect Spotify's limits. Keep this tab open until it says done.
+      
+    </div>
+    <br>
+    <div style="margin-top:20px;">
+      <p class="muted" style="margin-bottom:8px;">
+        
+      Enjoying FairShuffle? You can support the project below ☕💚
+      </p>
+
+      <a href="https://www.buymeacoffee.com/FairShuffle" target="_blank">
+        <img 
+        src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=☕&slug=FairShuffle&button_colour=1db954&font_colour=ffffff&font_family=Inter&outline_colour=000000&coffee_colour=ffffff"
+        alt="Buy me a coffee"
+        height="42">
+      </a>
+    </div>
+  </footer>
+
+  <script>
+    // =====================
+    // CONFIG — EDIT THIS
+    // =====================
+    const CLIENT_ID = "a62a280f59fd41f2977cdf5429d1ff87"; // <- from Spotify Developer Dashboard
+    const REDIRECT_URI = window.location.origin + window.location.pathname; // ensure this exact URL is whitelisted in your app settings
+    const SCOPES = [
+      "playlist-read-private",
+      "playlist-read-collaborative",
+      "playlist-modify-private",
+      "playlist-modify-public"
+    ];
+
+    // =====================
+    // Spotify OAuth — PKCE
+    // =====================
+    // Uses Authorization Code with PKCE, no secret required.
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const whoami = document.getElementById('whoami');
+
+    const auth = {
+      access_token: null,
+      refresh_token: null,
+      expires_at: 0,
+    };
+
+    function setToken(t, expiresInSec){
+      auth.access_token = t;
+      auth.expires_at = Date.now() + (expiresInSec * 1000) - 5000;
+      sessionStorage.setItem('sp_token', auth.access_token);
+      sessionStorage.setItem('sp_expires_at', String(auth.expires_at));
+    }
+
+    function restoreToken(){
+      const t = sessionStorage.getItem('sp_token');
+      const e = sessionStorage.getItem('sp_expires_at');
+      if(t && e && Number(e) > Date.now()){
+        auth.access_token = t; auth.expires_at = Number(e);
+        return true;
+      }
+      return false;
+    }
+
+    async function sha256(str){
+      const data = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return new Uint8Array(digest);
+    }
+    function base64url(buf){
+      let s = btoa(String.fromCharCode.apply(null, [...buf]));
+      return s.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    }
+    function randomString(len=64){
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+      let out = '';
+      for(let i=0;i<len;i++){ out += chars[Math.floor(Math.random()*chars.length)]; }
+      return out;
+    }
+
+    async function beginLogin(){
+      const verifier = randomString(96);
+      const challenge = base64url(await sha256(verifier));
+      sessionStorage.setItem('sp_code_verifier', verifier);
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: CLIENT_ID,
+        code_challenge_method: 'S256',
+        code_challenge: challenge,
+        redirect_uri: REDIRECT_URI,
+        scope: SCOPES.join(' '),
+        show_dialog: 'true'
+      });
+      window.location = `https://accounts.spotify.com/authorize?${params.toString()}`;
+    }
+
+    async function completeLoginIfReturning(){
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      if(!code) return false;
+      logUI('Exchanging code…');
+      const verifier = sessionStorage.getItem('sp_code_verifier');
+      const body = new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: REDIRECT_URI,
+        code_verifier: verifier
+      });
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body
+      });
+      if(!res.ok){ alert('Auth error. Check Client ID and Redirect URI.'); return false; }
+      const data = await res.json();
+      setToken(data.access_token, data.expires_in);
+      history.replaceState({}, document.title, REDIRECT_URI); // clean code param
+      return true;
+    }
+
+    function isAuthed(){ return !!auth.access_token; }
+
+    // =====================
+    // Simple API helper
+    // =====================
+    async function api(path, opts={}){
+      const res = await fetch(`https://api.spotify.com/v1${path}`, {
+        ...opts,
+        headers: { 'Authorization': `Bearer ${auth.access_token}`, 'Content-Type':'application/json', ...(opts.headers||{}) }
+      });
+      if(res.status === 401){
+        throw new Error('Unauthorized. Token expired or invalid. Log in again.');
+      }
+      if(!res.ok){
+        const txt = await res.text();
+        throw new Error(`API ${res.status}: ${txt}`);
+      }
+      if(res.status === 204) return null;
+      return res.json();
+    }
+
+    // =====================
+    // UI wiring: playlists
+    // =====================
+    const playlistCard = document.getElementById('playlistCard');
+    const playlistSel = document.getElementById('playlistSel');
+    const playlistMeta = document.getElementById('playlistMeta');
+    const countsEl = document.getElementById('counts');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const createName = document.getElementById('createName');
+
+    async function loadMe(){
+      const me = await api('/me');
+      whoami.classList.remove('hidden');
+      whoami.textContent = `Logged in as ${me.display_name || me.id}`;
+      return me;
+    }
+
+    async function loadPlaylists(){
+      playlistSel.innerHTML = '';
+      let next = '/me/playlists?limit=50';
+      const all = [];
+      while(next){
+        const page = await api(next.replace('https://api.spotify.com/v1',''));
+        all.push(...page.items);
+        next = page.next;
+      }
+      all.sort((a,b)=> (b.tracks?.total||0) - (a.tracks?.total||0));
+      for(const p of all){
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name} — ${p.tracks.total} items ${p.owner?.display_name ? ' • by '+p.owner.display_name : ''}`;
+        opt.dataset.total = p.tracks.total;
+        playlistSel.appendChild(opt);
+      }
+      onPlaylistChange();
+    }
+
+    function onPlaylistChange(){
+      const sel = playlistSel.selectedOptions[0];
+      const total = Number(sel?.dataset.total||0);
+      playlistMeta.textContent = total ? `${total} items` : '';
+      createName.value = `Fair Shuffle — ${sel?.textContent?.split(' — ')[0]||'My Playlist'}`;
+      countsEl.textContent = '—';
+      shuffleBtn.disabled = true;
+    }
+    playlistSel.addEventListener('change', onPlaylistChange);
+
+    // =====================
+    // Fetch playlist items with paging
+    // =====================
+    async function getPlaylistTracks(playlistId){
+      const items = [];
+      let url = `/playlists/${playlistId}/tracks?limit=50&fields=items(track(id,uri,name,artists(id,name))),next,total`;
+      while(url){
+        const page = await api(url);
+        page.items.forEach(it=>{
+          const t = it.track; if(!t || !t.uri) return;
+          items.push({
+            uri: t.uri,
+            name: t.name,
+            artistId: (t.artists && t.artists[0] && t.artists[0].id) || 'unknown',
+            artist: (t.artists && t.artists[0] && t.artists[0].name) || 'Unknown'
+          });
+        });
+        url = page.next ? page.next.replace('https://api.spotify.com/v1','') : null;
+        progressTick(items.length, page.total||items.length);
+      }
+      return items;
+    }
+
+    // =====================
+    // Fair Artist Distribution Shuffle
+    // =====================
+	function balancedShuffle(tracks) {
+	  const total = tracks.length;
+	  if (total <= 2) return tracks.slice();
+
+	  // Group tracks by artist and shuffle within each artist
+	  const byArtist = new Map();
+	  for (const t of tracks) {
+		if (!byArtist.has(t.artistId)) byArtist.set(t.artistId, []);
+		byArtist.get(t.artistId).push(t);
+	  }
+	  for (const arr of byArtist.values()) {
+		// Fisher–Yates shuffle per artist to avoid repeating song order
+		for (let i = arr.length - 1; i > 0; i--) {
+		  const j = (Math.random() * (i + 1)) | 0;
+		  [arr[i], arr[j]] = [arr[j], arr[i]];
+		}
+	  }
+
+	  // Build artist schedulers with a cooldown (gap) ~ ideal spacing
+	  const artists = [];
+	  for (const [artistId, arr] of byArtist.entries()) {
+		const count = arr.length;
+		const idealStep = total / count;                          // desired distance between placements
+		const gap = Math.max(1, Math.floor(idealStep));          // min positions before artist can reappear
+		const jitter = Math.floor(Math.random() * Math.max(1, Math.floor(idealStep / 3))); // small per-artist offset
+		artists.push({
+		  id: artistId,
+		  pool: arr,                      // shuffled tracks
+		  left: count,                    // remaining
+		  gap,                            // cooldown length
+		  nextAt: Math.max(0, jitter),    // earliest index allowed to place this artist again
+		});
+	  }
+
+	  // Helper: pick candidate with most remaining that is available at position i
+	  function pickCandidate(i) {
+		// First, try those whose cooldown allows placement now
+		let candidates = artists.filter(a => a.left > 0 && a.nextAt <= i);
+		if (candidates.length === 0) {
+		  // Relax: if everyone is cooling down, allow the one who becomes available soonest
+		  const minNext = Math.min(...artists.filter(a => a.left > 0).map(a => a.nextAt));
+		  candidates = artists.filter(a => a.left > 0 && a.nextAt === minNext);
+		}
+		// Prefer the one with most left; random tie-break to avoid deterministic loops
+		candidates.sort((a, b) => b.left - a.left || (Math.random() - 0.5));
+		return candidates[0] || null;
+	  }
+
+	  const out = new Array(total);
+	  for (let i = 0; i < total; i++) {
+		const a = pickCandidate(i);
+		if (!a) {
+		  // Fallback (should be rare): fill with any remaining track
+		  const any = artists.find(x => x.left > 0);
+		  if (!any) break;
+		  out[i] = any.pool.pop();
+		  any.left--;
+		  any.nextAt = i + any.gap;
+		  continue;
+		}
+		// Place next track from this artist
+		out[i] = a.pool.pop();
+		a.left--;
+		a.nextAt = i + a.gap;
+	  }
+
+	  // Safety fill for any leftover (shouldn't happen, but just in case)
+	  let leftover = [];
+	  for (const a of artists) leftover = leftover.concat(a.pool);
+	  let p = 0;
+	  for (let i = 0; i < total && p < leftover.length; i++) {
+		if (!out[i]) out[i] = leftover[p++];
+	  }
+
+	  // Final pass: fix accidental adjacencies (very rare) via local swaps
+	  for (let i = 1; i < out.length; i++) {
+		if (out[i].artistId === out[i - 1].artistId) {
+		  // find next position we can swap with that breaks the adjacency
+		  for (let j = i + 1; j < out.length; j++) {
+			if (out[j].artistId !== out[i].artistId && out[j].artistId !== out[i - 1].artistId) {
+			  [out[i], out[j]] = [out[j], out[i]];
+			  break;
+			}
+		  }
+		}
+	  }
+
+	  return out;
+	}
+
+	// Enhanced debugging / visualization helper
+// Enhanced debugging / visualization helper
+	function analyzeArtistSpacing(tracks) {
+	  const positions = new Map();
+
+	  // Group positions by artist name (fallbacks if needed)
+	  for (let i = 0; i < tracks.length; i++) {
+		const a = tracks[i].artist || tracks[i].artistName || tracks[i].artistId;
+		if (!positions.has(a)) positions.set(a, []);
+		positions.get(a).push(i);
+	  }
+
+	  const results = [];
+	  for (const [artist, idxs] of positions.entries()) {
+		const distances = [];
+		for (let i = 1; i < idxs.length; i++) distances.push(idxs[i] - idxs[i - 1]);
+		const avg = distances.length
+		  ? (distances.reduce((a, b) => a + b, 0) / distances.length).toFixed(1)
+		  : '-';
+		results.push({
+		  artist,
+		  count: idxs.length,
+		  avgDist: avg,
+		  distances,
+		  positions: idxs,
+		});
+	  }
+
+	  // Sort by number of songs per artist
+	  results.sort((a, b) => b.count - a.count);
+
+	  // Display nicely in console
+	  console.table(
+		results.map((r) => ({
+		  Artist: r.artist,
+		  Tracks: r.count,
+		  'Avg Distance': r.avgDist,
+		  Distances: r.distances.join(', '),
+		  Positions: r.positions.join(', '),
+		}))
+	  );
+
+	  // 🪄 Print inside the page for easier reading
+	const html = `
+	  <div style="
+		background:#0c121a;
+		color:#cfe3ff;
+		font-family:monospace;
+		white-space:nowrap;
+		padding:12px 16px;
+		margin-top:16px;
+		border-radius:12px;
+		max-height:70vh;
+		overflow:auto;
+		font-size:13px;
+		line-height:1.4;
+	  ">
+		${results.map(r => {
+		  const artist = r.artist.padEnd(22, ' ');
+		  const d = r.distances.join(',');
+		  const p = r.positions.join(',');
+		  return `${artist} | Tracks:${r.count.toString().padStart(3,' ')} | Avg:${r.avgDist.toString().padStart(6,' ')} | Distances:[${d}] | Positions:[${p}]`;
+		}).join('<br>')}
+	  </div>
+	`;
+	document.body.insertAdjacentHTML('beforeend', html);
+
+	  return results;
+	}
+
+
+
+
+
+    // =====================
+    // Preview & actions
+    // =====================
+    const previewCard = document.getElementById('previewCard');
+    const origList = document.getElementById('origList');
+    const newList = document.getElementById('newList');
+
+    let cachedTracks = [];
+    let proposed = [];
+
+    function renderFirst50(){
+      origList.innerHTML = '';
+      newList.innerHTML = '';
+      for(const t of cachedTracks.slice(0,50)){
+        const li = document.createElement('li'); li.textContent = `${t.name} — ${t.artist}`; origList.appendChild(li);
+      }
+      for(const t of proposed.slice(0,50)){
+        const li = document.createElement('li'); li.textContent = `${t.name} — ${t.artist}`; newList.appendChild(li);
+      }
+    }
+
+    analyzeBtn.addEventListener('click', async ()=>{
+      try{
+        const pid = playlistSel.value; if(!pid) return;
+        showProgress();
+        logUI('Loading playlist items…');
+        cachedTracks = await getPlaylistTracks(pid);
+        const total = cachedTracks.length;
+        const byArtist = new Map();
+        for(const t of cachedTracks){
+          const k = t.artistId; if(!byArtist.has(k)) byArtist.set(k,[]); byArtist.get(k).push(t);
+        }
+        // Compute stats
+        const maxArtist = [...byArtist.values()].reduce((m,arr)=> Math.max(m,arr.length), 0);
+        const idealStep = (aCount)=> (total / aCount).toFixed(1);
+        countsEl.textContent = `${total} tracks • ${byArtist.size} artists • densest artist has ${maxArtist} tracks (ideal spacing ≈ ${idealStep(maxArtist)})`;
+
+        proposed = balancedShuffle(cachedTracks);
+		analyzeArtistSpacing(proposed);
+        renderFirst50();
+        previewCard.classList.remove('hidden');
+        shuffleBtn.disabled = false;
+        hideProgress();
+      }catch(e){
+        alert(e.message);
+        hideProgress();
+      }
+    });
+
+    // UPDATED SHUFFLE HANDLER ONLY
+        shuffleBtn.addEventListener('click', async ()=>{
+      try{
+        const pid = playlistSel.value; if(!pid) return;
+        if(!proposed.length){ alert('Run Analyze first.'); return; }
+        const me = await api('/me');
+        const name = (createName.value || 'Fair Shuffle');
+        showProgress();
+    
+        // NEW modal choice
+        const choice = await getUserChoice();
+        if (choice === 'cancel') {
+          logUI('❌ Cancelled by user.');
+          hideProgress();
+          return;
+        }
+    
+        let targetId = pid;
+        let targetName = playlistSel.selectedOptions[0]?.textContent || name;
+    
+        if (choice === 'overwrite') {
+          logUI('Overwriting existing playlist…');
+          await api(`/playlists/${targetId}/tracks`, { method:'PUT', body: JSON.stringify({ uris: [] }) });
+        } else if (choice === 'create') {
+          logUI('Creating new playlist…');
+          const created = await api(`/users/${encodeURIComponent(me.id)}/playlists`, {
+            method:'POST',
+            body: JSON.stringify({ name, description:'Auto-created with Fair Artist Shuffle', public:false })
+          });
+          targetId = created.id;
+          targetName = created.name;
+        }
+    
+        // Add items in batches of 100
+        const uris = proposed.map(t=>t.uri);
+        let i = 0;
+        while(i < uris.length){
+          const chunk = uris.slice(i, i+100);
+          logUI(`Adding items ${i+1}–${i+chunk.length} of ${uris.length}…`);
+          await api(`/playlists/${targetId}/tracks`, { method:'POST', body: JSON.stringify({ uris: chunk }) });
+          i += chunk.length;
+          progressTick(i, uris.length);
+        }
+    
+        logUI(`Done! Open your playlist: https://open.spotify.com/playlist/${targetId}`);
+        alert(choice === 'overwrite'
+          ? `✅ The playlist "${targetName}" has been overwritten with the new shuffled order!`
+          : `✅ A new playlist "${targetName}" has been created!`);
+        hideProgress();
+      }catch(e){
+        alert(e.message);
+        hideProgress();
+      }
+    });
+
+    // =====================
+    // Progress + logs
+    // =====================
+    const progressCard = document.getElementById('progressCard');
+    const progressBar = document.getElementById('progress');
+    const logEl = document.getElementById('log');
+
+    function showProgress(){ progressCard.classList.remove('hidden'); progressBar.value = 0; logEl.textContent = ''; }
+    function hideProgress(){ /* keep visible with logs */ }
+    function progressTick(done, total){ progressBar.max = total; progressBar.value = done; }
+    function logUI(msg){ logEl.textContent += (logEl.textContent?"\n":"") + msg; }
+
+    // =====================
+    // Boot
+    // =====================
+    loginBtn.addEventListener('click', beginLogin);
+    logoutBtn.addEventListener('click', ()=>{ sessionStorage.clear(); location.reload(); });
+
+    (async function init(){
+      if(await completeLoginIfReturning() || restoreToken()){
+        loginBtn.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+        await loadMe();
+        playlistCard.classList.remove('hidden');
+        loadPlaylists();
+      }
+    })();
+  </script>
+
+  <!-- Modal overlay -->
+  <div id="overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000;">
+    <div id="choiceDialog" style="background:#121923;border:1px solid #263445;border-radius:16px;padding:20px;text-align:center;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.5);">
+      <h3 style="margin-top:0;margin-bottom:16px;">Choose what to do with your playlist</h3>
+      <button id="overwriteBtn" style="appearance:none;border:0;border-radius:999px;padding:10px 16px;background:#1db954;color:#082412;font-weight:700;cursor:pointer;margin:6px;">Overwrite</button>
+      <button id="createBtn" style="appearance:none;border:0;border-radius:999px;padding:10px 16px;background:#1db954;color:#082412;font-weight:700;cursor:pointer;margin:6px;">Create New</button>
+      <button id="cancelBtn" style="appearance:none;border:0;border-radius:999px;padding:10px 16px;background:#1db954;color:#082412;font-weight:700;cursor:pointer;margin:6px;">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('overlay');
+    const overwriteBtn = document.getElementById('overwriteBtn');
+    const createBtn = document.getElementById('createBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+    function getUserChoice(){
+      return new Promise(resolve => {
+        overlay.style.display = 'flex';
+        overwriteBtn.onclick = () => { overlay.style.display='none'; resolve('overwrite'); };
+        createBtn.onclick = () => { overlay.style.display='none'; resolve('create'); };
+        cancelBtn.onclick = () => { overlay.style.display='none'; resolve('cancel'); };
+      });
+    }
+  </script>
+
+</body>
+</html>
