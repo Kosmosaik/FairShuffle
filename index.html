@@ -613,6 +613,7 @@
         countsEl.textContent = `${total} tracks • ${byArtist.size} artists • densest artist has ${maxArtist} tracks (ideal spacing ≈ ${idealStep(maxArtist)})`;
 
         proposed = fairShuffle(cachedTracks);
+		proposed = rebalanceByInsertionSmart(proposed, 0.2); // 20% threshold
 		analyzeArtistSpacing(proposed);
         renderFirst50();
         previewCard.classList.remove('hidden');
