@@ -522,9 +522,6 @@
 	
 	  document.body.insertAdjacentHTML("beforeend", tableHTML);
 	
-	  // Scroll table into view for convenience
-	  document.getElementById("analysisTable").scrollIntoView({ behavior: "smooth", block: "start" });
-	
 	  console.log(`📊 Artist spacing analysis complete (${results.length} artists).`);
 	  return results;
 	}
