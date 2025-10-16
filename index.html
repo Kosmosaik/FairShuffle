@@ -354,7 +354,7 @@
 	  // Step 3: place tracks with variable jitter + offset
 	  for (const [artist, songs] of artists) {
 	    const idealStep = total / songs.length;
-	    const jitterScale = idealStep * 0.4; // 40% jitter
+	    const jitterScale = idealStep * 0.25; // 25% jitter
 	    for (let i = 0; i < songs.length; i++) {
 	      let pos = Math.floor((i * idealStep + offsets[artist]) % total);
 	      pos += Math.floor((Math.random() - 0.5) * jitterScale);
