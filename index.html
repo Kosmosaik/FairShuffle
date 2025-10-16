@@ -494,7 +494,7 @@
         const idealStep = (aCount)=> (total / aCount).toFixed(1);
         countsEl.textContent = `${total} tracks • ${byArtist.size} artists • densest artist has ${maxArtist} tracks (ideal spacing ≈ ${idealStep(maxArtist)})`;
 
-        proposed = balancedShuffle(cachedTracks);
+        proposed = fairShuffle(cachedTracks);
 		analyzeArtistSpacing(proposed);
         renderFirst50();
         previewCard.classList.remove('hidden');
