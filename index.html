@@ -514,10 +514,10 @@
       origList.innerHTML = '';
       newList.innerHTML = '';
       for(const t of cachedTracks.slice(0,50)){
-        const li = document.createElement('li'); li.textContent = `${t.name} — ${t.artist}`; origList.appendChild(li);
+        const li = document.createElement('li'); li.textContent = `${t.artist} — ${t.name}`; origList.appendChild(li);
       }
       for(const t of proposed.slice(0,50)){
-        const li = document.createElement('li'); li.textContent = `${t.name} — ${t.artist}`; newList.appendChild(li);
+        const li = document.createElement('li'); li.textContent = `${t.artist} — ${t.name}`; newList.appendChild(li);
       }
     }
 
