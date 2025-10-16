@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v1.24</title>
+  <title>Spotify Fair Artist Shuffle v1.25</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -118,7 +118,7 @@
 
   <footer>
     <div class="muted">
-      Tip: Large playlists are processed in chunks of 50 tracks (reading) and 100 tracks (writing) to respect Spotify's limits. Keep this tab open until it says done.
+      Tip: Large playlists are processed in chunks of 50 tracks (reading) and 100 tracks (writing) to respect Spotify's limits. Keep this tab open until it's finished.
     </div>
     <br>
     <div style="margin-top:20px;">
@@ -354,7 +354,7 @@
 	  // Step 3: place tracks with variable jitter + offset
 	  for (const [artist, songs] of artists) {
 	    const idealStep = total / songs.length;
-	    const jitterScale = idealStep * 0.25; // 25% jitter
+	    const jitterScale = idealStep * 0.2; // 25% jitter
 	    for (let i = 0; i < songs.length; i++) {
 	      let pos = Math.floor((i * idealStep + offsets[artist]) % total);
 	      pos += Math.floor((Math.random() - 0.5) * jitterScale);
@@ -420,7 +420,7 @@
 	
 	  return result;
 	}
-	  function rebalanceByInsertionSmart(tracks, tolerance = 0.2, maxPasses = 10) {
+	  function rebalanceByInsertionSmart(tracks, tolerance = 0.25, maxPasses = 50) {
 		  let result = [...tracks];
 		  const total = result.length;
 		  let totalMoves = 0;
