@@ -354,7 +354,7 @@
 		const count = arr.length;
 		const idealStep = total / count;                          // desired distance between placements
 		const gap = Math.max(1, Math.floor(idealStep));          // min positions before artist can reappear
-		const jitter = Math.floor(Math.random() * Math.max(1, Math.floor(idealStep / 3))); // small per-artist offset
+		const jitter = Math.floor(Math.random() * Math.max(1, Math.floor(idealStep / 2))); // small per-artist offset
 		artists.push({
 		  id: artistId,
 		  pool: arr,                      // shuffled tracks
