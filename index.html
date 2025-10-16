@@ -420,6 +420,46 @@
 	
 	  return result;
 	}
+	function rebalanceByInsertionSmart(tracks, tolerance = 0.2) {
+		let result = [...tracks];
+		const total = result.length;
+
+		// Build artist position map
+		const byArtist = new Map();
+		for (let i = 0; i < total; i++) {
+			const a = result[i].artistId;
+			if (!byArtist.has(a)) byArtist.set(a, []);
+			byArtist.get(a).push(i);
+		}
+
+		// Analyze and rebalance
+		let moves = 0;
+		for (const [artist, posList] of byArtist.entries()) {
+			const count = posList.length;
+			if (count < 2) continue;
+
+			const idealStep = total / count;
+			const minDist = idealStep * tolerance; // dynamic threshold
+
+			for (let i = 1; i < posList.length; i++) {
+				const prev = posList[i - 1];
+				const curr = posList[i];
+				const dist = curr - prev;
+
+				if (dist < minDist) {
+					// Too close -> move farther based on ideal spacing
+					const idealPos = Math.floor((prev + idealStep) % total);
+					const [song] = result.splice(curr, 1);
+					result.splice(idealPos, 0, song);
+					moves++;
+				}
+			}
+		}
+
+		console.log(`🎯 Smart rebalance finished — ${moves} songs repositioned dynamically.`);
+		return result;
+	}
+
 	
 	// =====================
 	// Analysis table + closest distance debug
