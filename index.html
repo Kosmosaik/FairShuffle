@@ -421,6 +421,78 @@
 	  return result;
 	}
 
+		// =====================
+	// Analysis table (debug info)
+	// =====================
+	function analyzeArtistSpacing(tracks) {
+	  const positions = new Map();
+	
+	  // Collect positions per artist
+	  for (let i = 0; i < tracks.length; i++) {
+	    const a = tracks[i].artist || tracks[i].artistName || tracks[i].artistId;
+	    if (!positions.has(a)) positions.set(a, []);
+	    positions.get(a).push(i);
+	  }
+	
+	  const results = [];
+	  for (const [artist, idxs] of positions.entries()) {
+	    const distances = [];
+	    for (let i = 1; i < idxs.length; i++) distances.push(idxs[i] - idxs[i - 1]);
+	    const avg = distances.length
+	      ? (distances.reduce((a, b) => a + b, 0) / distances.length).toFixed(1)
+	      : '-';
+	    results.push({
+	      artist,
+	      count: idxs.length,
+	      avgDist: avg,
+	      distances,
+	      positions: idxs,
+	    });
+	  }
+	
+	  results.sort((a, b) => b.count - a.count);
+	
+	  // Replace old analysis table
+	  const old = document.getElementById("analysisTable");
+	  if (old) old.remove();
+	
+	  const tableHTML = `
+	    <div id="analysisTable" style="margin:24px 0;">
+	      <table style="width:95%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
+	                    background:#0c121a; border-radius:12px; overflow:hidden;">
+	        <thead style="background:#111a22;">
+	          <tr><th style="text-align:left;padding:6px;">Artist</th>
+	              <th>Tracks</th><th>Avg Dist</th>
+	              <th style="text-align:left;">Distances (sample)</th>
+	              <th style="text-align:left;">Positions (sample)</th></tr>
+	        </thead>
+	        <tbody>
+	          ${results
+	            .map(
+	              (r) => `
+	              <tr>
+	                <td style="padding:6px;">${r.artist}</td>
+	                <td style="text-align:center;">${r.count}</td>
+	                <td style="text-align:center;">${r.avgDist}</td>
+	                <td style="padding:6px;">${r.distances.slice(0,8).join(", ")}${
+	                  r.distances.length > 8 ? ", ..." : ""
+	                }</td>
+	                <td style="padding:6px;">${r.positions.slice(0,8).join(", ")}${
+	                  r.positions.length > 8 ? ", ..." : ""
+	                }</td>
+	              </tr>`
+	            )
+	            .join("")}
+	        </tbody>
+	      </table>
+	    </div>`;
+	
+	  document.body.insertAdjacentHTML("beforeend", tableHTML);
+	  console.log(`📊 Artist spacing table generated (${results.length} artists)`);
+	  return results;
+	}
+
+
 
 
     // =====================
