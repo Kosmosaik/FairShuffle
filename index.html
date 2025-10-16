@@ -420,9 +420,9 @@
 	
 	  return result;
 	}
-
+	
 	// =====================
-	// Analysis table (debug info + console)
+	// Analysis table + closest distance debug
 	// =====================
 	function analyzeArtistSpacing(tracks) {
 	  const positions = new Map();
@@ -435,76 +435,99 @@
 	  }
 	
 	  const results = [];
+	  let globalMin = Infinity;
+	  const offenders = [];
+	
+	  // Compute spacing stats
 	  for (const [artist, idxs] of positions.entries()) {
 	    const distances = [];
-	    for (let i = 1; i < idxs.length; i++) distances.push(idxs[i] - idxs[i - 1]);
+	    for (let i = 1; i < idxs.length; i++) {
+	      const dist = idxs[i] - idxs[i - 1];
+	      distances.push(dist);
+	      if (dist < globalMin) {
+	        globalMin = dist;
+	      }
+	    }
 	    const avg = distances.length
 	      ? (distances.reduce((a, b) => a + b, 0) / distances.length).toFixed(1)
 	      : '-';
-	    results.push({
-	      artist,
-	      count: idxs.length,
-	      avgDist: avg,
-	      distances,
-	      positions: idxs,
-	    });
+	    results.push({ artist, count: idxs.length, avgDist: avg, distances, positions: idxs });
 	  }
 	
-	  // Sort by number of songs per artist
+	  // Find all artists that share the smallest distance
+	  for (const r of results) {
+	    if (r.distances.includes(globalMin)) offenders.push(r.artist);
+	  }
+	
 	  results.sort((a, b) => b.count - a.count);
 	
-	  // 👇 Also log to console for debugging
+	  // 🧠 Console table for debugging
 	  console.table(
 	    results.map((r) => ({
 	      Artist: r.artist,
 	      Tracks: r.count,
 	      'Avg Distance': r.avgDist,
+	      'Min Dist': Math.min(...r.distances),
 	      Distances: r.distances.join(', '),
 	      Positions: r.positions.join(', '),
 	    }))
 	  );
 	
-	  // Remove previous analysis table if it exists
+	  console.log(
+	    `⚠️ Closest distance found: ${globalMin} between tracks of ${offenders.join(', ')}`
+	  );
+	
+	  // Remove previous table if exists
 	  const old = document.getElementById("analysisTable");
 	  if (old) old.remove();
 	
-	  // Create a new analysis table in the DOM
+	  // HTML table
 	  const tableHTML = `
 	    <div id="analysisTable" style="margin:24px 0;">
+	      <h4 style="margin-bottom:8px;">Closest distance: <span style="color:#ff5c5c;">${globalMin}</span> — 
+	        <span style="color:#ffd166;">${offenders.join(", ")}</span></h4>
 	      <table style="width:95%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
 	                    background:#0c121a; border-radius:12px; overflow:hidden;">
 	        <thead style="background:#111a22;">
 	          <tr><th style="text-align:left;padding:6px;">Artist</th>
-	              <th>Tracks</th><th>Avg Dist</th>
+	              <th>Tracks</th><th>Avg Dist</th><th>Min Dist</th>
 	              <th style="text-align:left;">Distances (sample)</th>
 	              <th style="text-align:left;">Positions (sample)</th></tr>
 	        </thead>
 	        <tbody>
 	          ${results
-	            .map(
-	              (r) => `
-	              <tr>
-	                <td style="padding:6px;">${r.artist}</td>
-	                <td style="text-align:center;">${r.count}</td>
-	                <td style="text-align:center;">${r.avgDist}</td>
-	                <td style="padding:6px;">${r.distances.slice(0,8).join(", ")}${
-	                  r.distances.length > 8 ? ", ..." : ""
-	                }</td>
-	                <td style="padding:6px;">${r.positions.slice(0,8).join(", ")}${
-	                  r.positions.length > 8 ? ", ..." : ""
-	                }</td>
-	              </tr>`
-	            )
+	            .map((r) => {
+	              const highlight = offenders.includes(r.artist)
+	                ? 'style="background:#331616;color:#ffb3b3;"'
+	                : '';
+	              const minDist = Math.min(...r.distances);
+	              return `
+	                <tr ${highlight}>
+	                  <td style="padding:6px;">${r.artist}</td>
+	                  <td style="text-align:center;">${r.count}</td>
+	                  <td style="text-align:center;">${r.avgDist}</td>
+	                  <td style="text-align:center;">${minDist === Infinity ? '-' : minDist}</td>
+	                  <td style="padding:6px;">${r.distances.slice(0,8).join(", ")}${
+	                r.distances.length > 8 ? ", ..." : ""
+	              }</td>
+	                  <td style="padding:6px;">${r.positions.slice(0,8).join(", ")}${
+	                r.positions.length > 8 ? ", ..." : ""
+	              }</td>
+	                </tr>`;
+	            })
 	            .join("")}
 	        </tbody>
 	      </table>
 	    </div>`;
 	
 	  document.body.insertAdjacentHTML("beforeend", tableHTML);
-	  console.log(`📊 Artist spacing table generated (${results.length} artists)`);
+	
+	  // Scroll table into view for convenience
+	  document.getElementById("analysisTable").scrollIntoView({ behavior: "smooth", block: "start" });
+	
+	  console.log(`📊 Artist spacing analysis complete (${results.length} artists).`);
 	  return results;
 	}
-
 
 
 
