@@ -421,8 +421,8 @@
 	  return result;
 	}
 
-		// =====================
-	// Analysis table (debug info)
+	// =====================
+	// Analysis table (debug info + console)
 	// =====================
 	function analyzeArtistSpacing(tracks) {
 	  const positions = new Map();
@@ -450,12 +450,25 @@
 	    });
 	  }
 	
+	  // Sort by number of songs per artist
 	  results.sort((a, b) => b.count - a.count);
 	
-	  // Replace old analysis table
+	  // 👇 Also log to console for debugging
+	  console.table(
+	    results.map((r) => ({
+	      Artist: r.artist,
+	      Tracks: r.count,
+	      'Avg Distance': r.avgDist,
+	      Distances: r.distances.join(', '),
+	      Positions: r.positions.join(', '),
+	    }))
+	  );
+	
+	  // Remove previous analysis table if it exists
 	  const old = document.getElementById("analysisTable");
 	  if (old) old.remove();
 	
+	  // Create a new analysis table in the DOM
 	  const tableHTML = `
 	    <div id="analysisTable" style="margin:24px 0;">
 	      <table style="width:95%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
