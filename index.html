@@ -373,95 +373,53 @@
 	    result[pos] = t;
 	  }
 	
+	  // 🧠 Enhanced anti-adjacency repair pass
+	  let repairs = 0;
+	  for (let i = 1; i < result.length; i++) {
+	    if (result[i].artistId === result[i - 1].artistId) {
+	      // Look ahead up to 6 positions for a better swap candidate
+	      let swapped = false;
+	      for (let j = i + 1; j < Math.min(result.length, i + 7); j++) {
+	        const a = result[i].artistId, b = result[j].artistId;
+	        const prevA = result[i - 1]?.artistId, nextB = result[j + 1]?.artistId;
+	        if (b !== a && b !== prevA && a !== nextB) {
+	          [result[i], result[j]] = [result[j], result[i]];
+	          swapped = true;
+	          repairs++;
+	          break;
+	        }
+	      }
+	
+	      // If not fixed, try swapping backwards up to 6 positions
+	      if (!swapped) {
+	        for (let j = Math.max(0, i - 6); j < i - 1; j++) {
+	          const a = result[i].artistId, b = result[j].artistId;
+	          const prevB = result[j - 1]?.artistId, nextA = result[i + 1]?.artistId;
+	          if (b !== a && a !== prevB && b !== nextA) {
+	            [result[i], result[j]] = [result[j], result[i]];
+	            repairs++;
+	            break;
+	          }
+	        }
+	      }
+	    }
+	  }
+	
+	  // Optional secondary repair: global random swap fallback
+	  for (let i = 1; i < result.length; i++) {
+	    if (result[i].artistId === result[i - 1].artistId) {
+	      const j = Math.floor(Math.random() * result.length);
+	      if (Math.abs(i - j) > 3 && result[j].artistId !== result[i].artistId) {
+	        [result[i], result[j]] = [result[j], result[i]];
+	        repairs++;
+	      }
+	    }
+	  }
+	
+	  console.log(`🔧 Anti-adjacency repair completed — ${repairs} swaps made`);
+	
 	  return result;
 	}
-
-
-	// Enhanced debugging / visualization helper
-	function analyzeArtistSpacing(tracks) {
-	  const positions = new Map();
-
-	  // Group positions by artist name (fallbacks if needed)
-	  for (let i = 0; i < tracks.length; i++) {
-		const a = tracks[i].artist || tracks[i].artistName || tracks[i].artistId;
-		if (!positions.has(a)) positions.set(a, []);
-		positions.get(a).push(i);
-	  }
-
-	  const results = [];
-	  for (const [artist, idxs] of positions.entries()) {
-		const distances = [];
-		for (let i = 1; i < idxs.length; i++) distances.push(idxs[i] - idxs[i - 1]);
-		const avg = distances.length
-		  ? (distances.reduce((a, b) => a + b, 0) / distances.length).toFixed(1)
-		  : '-';
-		results.push({
-		  artist,
-		  count: idxs.length,
-		  avgDist: avg,
-		  distances,
-		  positions: idxs,
-		});
-	  }
-
-	  // Sort by number of songs per artist
-	  results.sort((a, b) => b.count - a.count);
-
-	  // Display nicely in console
-	  console.table(
-		results.map((r) => ({
-		  Artist: r.artist,
-		  Tracks: r.count,
-		  'Avg Distance': r.avgDist,
-		  Distances: r.distances.join(', '),
-		  Positions: r.positions.join(', '),
-		}))
-	  );
-
-	  // 🪄 Print inside the page for easier reading
-	const tableHTML = `
-	  <table style="width:95%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
-	                background:#0c121a; margin-top:16px; border-radius:12px; overflow:hidden;">
-	    <thead style="background:#111a22;">
-	      <tr><th style="text-align:left;padding:6px;">Artist</th>
-	          <th>Tracks</th><th>Avg Dist</th>
-	          <th style="text-align:left;">Distances (sample)</th>
-	          <th style="text-align:left;">Positions (sample)</th></tr>
-	    </thead>
-	    <tbody>
-	      ${results
-	        .map(
-	          (r) => `
-	          <tr>
-	            <td style="padding:6px;">${r.artist}</td>
-	            <td style="text-align:center;">${r.count}</td>
-	            <td style="text-align:center;">${r.avgDist}</td>
-	            <td style="padding:6px;">${r.distances.slice(0,8).join(", ")}${
-	            r.distances.length > 8 ? ", ..." : ""
-	          }</td>
-	            <td style="padding:6px;">${r.positions.slice(0,8).join(", ")}${
-	            r.positions.length > 8 ? ", ..." : ""
-	          }</td>
-	          </tr>`
-	        )
-	        .join("")}
-	    </tbody>
-	  </table>`;
-	// Remove previous analysis table if it exists
-	const oldTable = document.getElementById("analysisTable");
-	if (oldTable) oldTable.remove();
-	
-	// Insert fresh one
-	document.body.insertAdjacentHTML(
-	  "beforeend",
-	  `<div id="analysisTable">${tableHTML}</div>`
-	);
-
-
-	  return results;
-	}
-
-
 
 
 
