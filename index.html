@@ -734,6 +734,35 @@
       });
     }
   </script>
+<script>
+	(function(){
+		const logBox = document.createElement('div');
+		Object.assign(logBox.style, {
+			position: 'fixed',
+			bottom: '0',
+			left: '0',
+			right: '0',
+			maxHeight: '30vh',
+			overflowY: 'auto',
+			background: 'rgba(0,0,0,0.8)',
+			color: '#0f0',
+			fontSize: '12px',
+			fontFamily: 'monospace',
+			padding: '6px',
+			zIndex: '9999',
+			whiteSpace: 'pre-wrap'
+		});
+		document.body.appendChild(logBox);
+
+		const oldLog = console.log;
+		console.log = (...args) => {
+			oldLog(...args);
+			logBox.textContent += args.map(a=>typeof a==='object'?JSON.stringify(a):a).join(' ') + '\n';
+			logBox.scrollTop = logBox.scrollHeight;
+		};
+	})();
+</script>
+
 
 </body>
 </html>
