@@ -447,7 +447,15 @@
 	        .join("")}
 	    </tbody>
 	  </table>`;
-	document.body.insertAdjacentHTML("beforeend", tableHTML);
+	// Remove previous analysis table if it exists
+	const oldTable = document.getElementById("analysisTable");
+	if (oldTable) oldTable.remove();
+	
+	// Insert fresh one
+	document.body.insertAdjacentHTML(
+	  "beforeend",
+	  `<div id="analysisTable">${tableHTML}</div>`
+	);
 
 
 	  return results;
