@@ -487,10 +487,17 @@
     }
 
     analyzeBtn.addEventListener('click', async ()=>{
-      try{
-        const pid = playlistSel.value; if(!pid) return;
-        showProgress();
-        logUI('Loading playlist items…');
+	  try{
+	    const pid = playlistSel.value;
+	    if(!pid) return;
+	
+	    // Hide old preview + reset UI early
+	    previewCard.classList.add('hidden');
+	    shuffleBtn.disabled = true;
+	    progressCard.classList.remove('hidden');
+	    progressBar.value = 0;
+	    logEl.textContent = '';
+	    logUI('Loading playlist items…');
         cachedTracks = await getPlaylistTracks(pid);
         const total = cachedTracks.length;
         const byArtist = new Map();
