@@ -443,29 +443,36 @@
 	  );
 
 	  // 🪄 Print inside the page for easier reading
-	const html = `
-	  <div style="
-		background:#0c121a;
-		color:#cfe3ff;
-		font-family:monospace;
-		white-space:nowrap;
-		padding:12px 16px;
-		margin-top:16px;
-		border-radius:12px;
-		max-height:70vh;
-		overflow:auto;
-		font-size:13px;
-		line-height:1.4;
-	  ">
-		${results.map(r => {
-		  const artist = r.artist.padEnd(22, ' ');
-		  const d = r.distances.join(',');
-		  const p = r.positions.join(',');
-		  return `${artist} | Tracks:${r.count.toString().padStart(3,' ')} | Avg:${r.avgDist.toString().padStart(6,' ')} | Distances:[${d}] | Positions:[${p}]`;
-		}).join('<br>')}
-	  </div>
-	`;
-	document.body.insertAdjacentHTML('beforeend', html);
+	const tableHTML = `
+	  <table style="width:100%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
+	                background:#0c121a; margin-top:16px; border-radius:12px; overflow:hidden;">
+	    <thead style="background:#111a22;">
+	      <tr><th style="text-align:left;padding:6px;">Artist</th>
+	          <th>Tracks</th><th>Avg Dist</th>
+	          <th style="text-align:left;">Distances (sample)</th>
+	          <th style="text-align:left;">Positions (sample)</th></tr>
+	    </thead>
+	    <tbody>
+	      ${results
+	        .map(
+	          (r) => `
+	          <tr>
+	            <td style="padding:6px;">${r.artist}</td>
+	            <td style="text-align:center;">${r.count}</td>
+	            <td style="text-align:center;">${r.avgDist}</td>
+	            <td style="padding:6px;">${r.distances.slice(0,8).join(", ")}${
+	            r.distances.length > 8 ? ", ..." : ""
+	          }</td>
+	            <td style="padding:6px;">${r.positions.slice(0,8).join(", ")}${
+	            r.positions.length > 8 ? ", ..." : ""
+	          }</td>
+	          </tr>`
+	        )
+	        .join("")}
+	    </tbody>
+	  </table>`;
+	document.body.insertAdjacentHTML("beforeend", tableHTML);
+
 
 	  return results;
 	}
