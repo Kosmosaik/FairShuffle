@@ -141,7 +141,7 @@
     // CONFIG — EDIT THIS
     // =====================
     const CLIENT_ID = "a62a280f59fd41f2977cdf5429d1ff87"; // <- from Spotify Developer Dashboard
-    const REDIRECT_URI = window.location.origin + window.location.pathname; // ensure this exact URL is whitelisted in your app settings
+    const REDIRECT_URI = "https://kosmosaik.github.io/FairShuffle/"; // ensure this exact URL is whitelisted in your app settings
     const SCOPES = [
       "playlist-read-private",
       "playlist-read-collaborative",
@@ -420,49 +420,49 @@
 	
 	  return result;
 	}
-	  function rebalanceByForwardSwap(tracks, tolerance = 0.2, maxPasses = 10) {
-		  const result = [...tracks];
-		  const total = result.length;
-		  let totalSwaps = 0;
+	function rebalanceByForwardSwap(tracks, tolerance = 0.2, maxPasses = 10) {
+		const result = [...tracks];
+		const total = result.length;
+		let totalSwaps = 0;
 
-		  for (let pass = 0; pass < maxPasses; pass++) {
-			  let swappedThisPass = 0;
+		for (let pass = 0; pass < maxPasses; pass++) {
+			let swappedThisPass = 0;
 
-			  const positionsByArtist = new Map();
-			  for (let i = 0; i < total; i++) {
-				  const a = result[i].artistId;
-				  if (!positionsByArtist.has(a)) positionsByArtist.set(a, []);
-				  positionsByArtist.get(a).push(i);
-			  }
+			const positionsByArtist = new Map();
+			for (let i = 0; i < total; i++) {
+				const a = result[i].artistId;
+				if (!positionsByArtist.has(a)) positionsByArtist.set(a, []);
+				positionsByArtist.get(a).push(i);
+			}
 
-			  for (const [artist, posList] of positionsByArtist.entries()) {
-				  const count = posList.length;
-				  if (count < 2) continue;
+			for (const [artist, posList] of positionsByArtist.entries()) {
+				const count = posList.length;
+				if (count < 2) continue;
 
-				  const idealStep = total / count;
-				  const minDist = idealStep * tolerance;
+				const idealStep = total / count;
+				const minDist = idealStep * tolerance;
 
-				  for (let i = 1; i < posList.length; i++) {
-					  const prev = posList[i - 1];
-					  const curr = posList[i];
-					  const dist = curr - prev;
+				for (let i = 1; i < posList.length; i++) {
+					const prev = posList[i - 1];
+					const curr = posList[i];
+					const dist = curr - prev;
 
-					  if (dist < minDist) {
-						  // find a swap target further away with a different artist
-						  for (let j = curr + 1; j < Math.min(total, curr + idealStep); j++) 
-							  if (!result[j] || result[j].artistId !== artist) {
-								  [result[curr], result[j]] = [result[j], result[curr]];
-								  swappedThisPass++;
-								  break;
-							  }
-					  }
-				  }
-			  }
-		  }
+					if (dist < minDist) {
+						// find a swap target further away with a different artist
+						for (let j = curr + 1; j < Math.min(total, curr + idealStep); j++) 
+							if (!result[j] || result[j].artistId !== artist) {
+								[result[curr], result[j]] = [result[j], result[curr]];
+								swappedThisPass++;
+								break;
+							}
+					}
+				}
+			}
+		}
 
-		  totalSwaps += swappedThisPass;
-		  if (swappedThisPass === 0) break; // stop early
-	  }
+		totalSwaps += swappedThisPass;
+		if (swappedThisPass === 0) break; // stop early
+	}
 
 	  console.log(`🎯 Forward-swap rebalance completed — ${totalSwaps} swaps in ${maxPasses} passes`);
 	  return result;
