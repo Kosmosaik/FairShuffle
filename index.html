@@ -449,24 +449,25 @@
 
 					if (dist < minDist) {
 						// find a swap target further away with a different artist
-						for (let j = curr + 1; j < Math.min(total, curr + idealStep); j++) 
+						for (let j = curr + 1; j < Math.min(total, curr + idealStep); j++) {
 							if (!result[j] || result[j].artistId !== artist) {
 								[result[curr], result[j]] = [result[j], result[curr]];
 								swappedThisPass++;
 								break;
 							}
+						}
 					}
 				}
 			}
+
+			totalSwaps += swappedThisPass;
+			if (swappedThisPass === 0) break; // stop early if stable
 		}
 
-		totalSwaps += swappedThisPass;
-		if (swappedThisPass === 0) break; // stop early
-	  }
-
-	  console.log(`🎯 Forward-swap rebalance completed — ${totalSwaps} swaps in ${maxPasses} passes`);
-	  return result;
+		console.log(`🎯 Forward-swap rebalance completed — ${totalSwaps} swaps in ${maxPasses} passes`);
+		return result;
 	}
+
 
 
 	// =====================
