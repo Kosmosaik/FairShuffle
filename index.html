@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.42</title>
+  <title>Spotify Fair Artist Shuffle v0.43</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.42</h1>
+	    <h1 style="margin:0;">FairShuffle v0.43</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -425,25 +425,42 @@
 	
 	    // Iterate artists; on the first fix we restart the round to keep indices fresh
 	    outer:
-	    for (const [artist, posList] of posByArtist.entries()) {
-	      const count = posList.length;
-	      if (count < 2) continue;
-	
-	      const idealStep = total / count;
-	      const minAllowed = idealStep * tolerance;
-	
-	      for (let k = 1; k < posList.length; k++) {
-	        const prev = posList[k - 1];
-	        const curr = posList[k % posList.length];
-	        const dist = (curr - prev + total) % total;   // ✅ circular gap
-	
-	        if (dist < minAllowed) {
-	          // --- pick a good target near prev + idealStep ---
-	          const base = norm(Math.round(prev + idealStep));
-	
-	          // Search candidates spaced by ~idealStep (a few hops), then widen locally
-	          let best = null;
-	          let bestScore = -1;
+		// --- Sort artists by their smallest spacing first (tightest offenders first) ---
+		const sortedArtists = [...posByArtist.entries()].sort((a, b) => {
+		  const dA = a[1].length < 2 ? Infinity : Math.min(...a[1].map((v, i, arr) =>
+		    i ? (v - arr[i - 1] + total) % total : total
+		  ));
+		  const dB = b[1].length < 2 ? Infinity : Math.min(...b[1].map((v, i, arr) =>
+		    i ? (v - arr[i - 1] + total) % total : total
+		  ));
+		  return dA - dB;
+		});
+
+		  console.log("👁️ Checking top 5 tightest artists this round:",
+		  	sortedArtists.slice(0, 5).map(([a, p]) => `${artistNames.get(a)} (${p.length})`)
+		);
+		
+		// Iterate artists in that order
+		outer:
+		for (const [artist, posList] of sortedArtists) {
+		  const count = posList.length;
+		  if (count < 2) continue;
+		
+		  const idealStep = total / count;
+		  const minAllowed = idealStep * tolerance;
+		
+		  for (let k = 1; k <= posList.length; k++) {  // ✅ note: wrap-around check
+		    const prev = posList[k - 1];
+		    const curr = posList[k % posList.length];
+		    const dist = (curr - prev + total) % total; // ✅ circular gap
+		
+		    if (dist < minAllowed) {
+		      // --- pick a good target near prev + idealStep ---
+		      const base = norm(Math.round(prev + idealStep));
+		
+		      // Search candidates spaced by ~idealStep (a few hops), then widen locally
+		      let best = null;
+		      let bestScore = -1;
 	
 	          // First: try ideal multiples ahead of prev
 	          for (let step = 1; step <= Math.min(count + 2, 8); step++) {
