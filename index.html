@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.32</title>
+  <title>Spotify Fair Artist Shuffle v0.33</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.32</h1>
+	    <h1 style="margin:0;">FairShuffle v0.33</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -504,7 +504,14 @@
 		  }
 	    }
 	
-	    if (!anyMovedThisRound) break;
+	    let stableRounds = 0;
+		for (let round = 0; round < maxRounds; round++) {
+		  ...
+		  if (anyMovedThisRound) stableRounds = 0;
+		  else stableRounds++;
+		
+		  if (stableRounds >= 2) break; // needs two consecutive stable rounds to stop
+		}
 	  }
 	
 	  console.log(`📐 Insertion rebalance moved ${moved} tracks across up to ${maxRounds} rounds`);
