@@ -504,15 +504,7 @@
 		  }
 	    }
 	
-	    let stableRounds = 0;
-		for (let round = 0; round < maxRounds; round++) {
-		  ...
-		  if (anyMovedThisRound) stableRounds = 0;
-		  else stableRounds++;
-		
-		  if (stableRounds >= 2) break; // needs two consecutive stable rounds to stop
-		}
-	  }
+		if (!anyMovedThisRound && round > 3) break;
 	
 	  console.log(`📐 Insertion rebalance moved ${moved} tracks across up to ${maxRounds} rounds`);
 	  return tracks;
