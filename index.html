@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.30</title>
+  <title>Spotify Fair Artist Shuffle v0.31</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.30</h1>
+	    <h1 style="margin:0;">FairShuffle v0.31</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -482,7 +482,12 @@
 	
 	        const dist = currIdx - prevIdx;
 	        if (dist >= minDist) continue;
-	
+			  
+			// 🧠 Debug log
+			console.log(
+			  `⚠️ [${artist}] distance ${dist} < ${minDist} (ideal ${idealStep.toFixed(1)}). Moving track from ${currIdx} → near ${Math.round(prevIdx + idealStep)}`
+			);
+			  
 	        // Compute desired spot near prev + idealStep (wrap)
 	        let target = norm(Math.round(prevIdx + idealStep));
 	
@@ -518,8 +523,6 @@
 	// =====================
 	function analyzeArtistSpacing(tracks) {
 	  const positions = new Map();
-	
-	  // Collect positions per artist
 	  for (let i = 0; i < tracks.length; i++) {
 	    const a = tracks[i].artist || tracks[i].artistName || tracks[i].artistId;
 	    if (!positions.has(a)) positions.set(a, []);
@@ -530,15 +533,13 @@
 	  let globalMin = Infinity;
 	  const offenders = [];
 	
-	  // Compute spacing stats
+	  // Collect stats
 	  for (const [artist, idxs] of positions.entries()) {
 	    const distances = [];
 	    for (let i = 1; i < idxs.length; i++) {
 	      const dist = idxs[i] - idxs[i - 1];
 	      distances.push(dist);
-	      if (dist < globalMin) {
-	        globalMin = dist;
-	      }
+	      if (dist < globalMin) globalMin = dist;
 	    }
 	    const avg = distances.length
 	      ? (distances.reduce((a, b) => a + b, 0) / distances.length).toFixed(1)
@@ -546,38 +547,35 @@
 	    results.push({ artist, count: idxs.length, avgDist: avg, distances, positions: idxs });
 	  }
 	
-	  // Find all artists that share the smallest distance
 	  for (const r of results) {
 	    if (r.distances.includes(globalMin)) offenders.push(r.artist);
 	  }
 	
-	  results.sort((a, b) => b.count - a.count);
+	  // Sort by number of songs
+	  const topByCount = [...results].sort((a, b) => b.count - a.count).slice(0, 25);
 	
-	  // 🧠 Console table for debugging
-	  console.table(
-	    results.map((r) => ({
-	      Artist: r.artist,
-	      Tracks: r.count,
-	      'Avg Distance': r.avgDist,
-	      'Min Dist': Math.min(...r.distances),
-	      Distances: r.distances.join(', '),
-	      Positions: r.positions.join(', '),
-	    }))
-	  );
+	  // Sort by smallest min distance
+	  const topByClosest = [...results]
+	    .filter(r => r.distances.length)
+	    .map(r => ({ ...r, minDist: Math.min(...r.distances) }))
+	    .sort((a, b) => a.minDist - b.minDist)
+	    .slice(0, 25);
 	
-	  console.log(
-	    `⚠️ Closest distance found: ${globalMin} between tracks of ${offenders.join(', ')}`
-	  );
+	  // Console info
+	  console.table(topByCount.map(r => ({
+	    Artist: r.artist,
+	    Tracks: r.count,
+	    'Avg Dist': r.avgDist,
+	    'Min Dist': Math.min(...r.distances),
+	  })));
+	  console.log(`⚠️ Closest distance found: ${globalMin} between ${offenders.join(', ')}`);
 	
-	  // Remove previous table if exists
-	  const old = document.getElementById("analysisTable");
-	  if (old) old.remove();
+	  // Remove previous tables
+	  document.querySelectorAll("#analysisTable").forEach(e => e.remove());
 	
-	  // HTML table
-	  const tableHTML = `
-	    <div id="analysisTable" style="margin:24px 0;">
-	      <h4 style="margin-bottom:8px;">Closest distance: <span style="color:#ff5c5c;">${globalMin}</span> — 
-	        <span style="color:#ffd166;">${offenders.join(", ")}</span></h4>
+	  const makeTable = (title, rows) => `
+	    <div style="margin:24px 0;">
+	      <h4 style="margin-bottom:8px;">${title}</h4>
 	      <table style="width:95%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
 	                    background:#0c121a; border-radius:12px; overflow:hidden;">
 	        <thead style="background:#111a22;">
@@ -587,24 +585,17 @@
 	              <th style="text-align:left;">Positions (sample)</th></tr>
 	        </thead>
 	        <tbody>
-	          ${results
-	            .map((r) => {
-	              const highlight = offenders.includes(r.artist)
-	                ? 'style="background:#331616;color:#ffb3b3;"'
-	                : '';
+	          ${rows
+	            .map(r => {
 	              const minDist = Math.min(...r.distances);
 	              return `
-	                <tr ${highlight}>
+	                <tr>
 	                  <td style="padding:6px;">${r.artist}</td>
 	                  <td style="text-align:center;">${r.count}</td>
 	                  <td style="text-align:center;">${r.avgDist}</td>
-	                  <td style="text-align:center;">${minDist === Infinity ? '-' : minDist}</td>
-	                  <td style="padding:6px;">${r.distances.slice(0,8).join(", ")}${
-	                r.distances.length > 8 ? ", ..." : ""
-	              }</td>
-	                  <td style="padding:6px;">${r.positions.slice(0,8).join(", ")}${
-	                r.positions.length > 8 ? ", ..." : ""
-	              }</td>
+	                  <td style="text-align:center;">${minDist}</td>
+	                  <td style="padding:6px;">${r.distances.slice(0, 8).join(", ")}${r.distances.length > 8 ? ", ..." : ""}</td>
+	                  <td style="padding:6px;">${r.positions.slice(0, 8).join(", ")}${r.positions.length > 8 ? ", ..." : ""}</td>
 	                </tr>`;
 	            })
 	            .join("")}
@@ -612,12 +603,17 @@
 	      </table>
 	    </div>`;
 	
-	  document.body.insertAdjacentHTML("beforeend", tableHTML);
+	  const html = `
+	    <div id="analysisTable">
+	      <h3 style="margin-bottom:12px;">Artist Spacing Summary</h3>
+	      ${makeTable("Top 25 artists (by track count)", topByCount)}
+	      ${makeTable("25 artists with smallest minimum spacing", topByClosest)}
+	    </div>`;
 	
+	  document.body.insertAdjacentHTML("beforeend", html);
 	  console.log(`📊 Artist spacing analysis complete (${results.length} artists).`);
 	  return results;
 	}
-
 
 
     // =====================
