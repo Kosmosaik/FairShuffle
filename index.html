@@ -331,184 +331,105 @@
     // Fair Artist Distribution Shuffle
     // =====================
 	function fairShuffle(tracks) {
-	  // Group by artist
-	  const byArtist = {};
-	  tracks.forEach(t => {
-	    const a = t.artistId;
-	    if (!byArtist[a]) byArtist[a] = [];
-	    byArtist[a].push(t);
-	  });
-	
 	  const total = tracks.length;
-	  const result = new Array(total).fill(null);
+	  const byArtist = {};
 	
-	  // Step 1: sort artists by number of tracks (descending)
-	  const artists = Object.entries(byArtist).sort((a,b) => b[1].length - a[1].length);
-	
-	  // Step 2: assign each artist a random "phase offset"
-	  const offsets = {};
-	  for (const [artist] of artists) {
-	    offsets[artist] = Math.floor(Math.random() * total);
+	  // Group by artist
+	  for (const t of tracks) {
+	    if (!byArtist[t.artistId]) byArtist[t.artistId] = [];
+	    byArtist[t.artistId].push(t);
 	  }
 	
-	  // Step 3: place tracks with variable jitter + offset
+	  // Sort artists by number of tracks (most → fewest)
+	  const artists = Object.entries(byArtist).sort((a, b) => b[1].length - a[1].length);
+	
+	  const result = new Array(total);
+	  const used = new Set();
+	
+	  // Assign random offset for each artist
+	  const offsets = Object.fromEntries(artists.map(([a]) => [a, Math.floor(Math.random() * total)]));
+	
+	  // Place each artist's songs evenly with small jitter
 	  for (const [artist, songs] of artists) {
 	    const idealStep = total / songs.length;
-	    const jitterScale = idealStep * 0.15; // 15% jitter
+	    const jitter = idealStep * 0.15; // 15% randomness
+	
 	    for (let i = 0; i < songs.length; i++) {
 	      let pos = Math.floor((i * idealStep + offsets[artist]) % total);
-	      pos += Math.floor((Math.random() - 0.5) * jitterScale);
-	      pos = (pos + total) % total; // wrap
-	      // find nearest empty slot
+	      pos = (pos + Math.floor((Math.random() - 0.5) * jitter) + total) % total;
+	
+	      // Find nearest empty slot
 	      while (result[pos]) pos = (pos + 1) % total;
 	      result[pos] = songs[i];
+	      used.add(songs[i].uri);
 	    }
 	  }
 	
-	  // Fill any remaining gaps
-	  const leftovers = tracks.filter(t => !result.includes(t));
-	  for (const t of leftovers) {
-	    let pos = Math.floor(Math.random() * total);
-	    while (result[pos]) pos = (pos + 1) % total;
-	    result[pos] = t;
+	  // Fill remaining gaps (if any)
+	  for (const t of tracks) {
+	    if (!used.has(t.uri)) {
+	      let pos = Math.floor(Math.random() * total);
+	      while (result[pos]) pos = (pos + 1) % total;
+	      result[pos] = t;
+	      used.add(t.uri);
+	    }
 	  }
 	
-	  // 🧠 Enhanced anti-adjacency repair pass
+	  // Quick anti-adjacency repair pass
 	  let repairs = 0;
 	  for (let i = 1; i < result.length; i++) {
 	    if (result[i].artistId === result[i - 1].artistId) {
-	      // Look ahead up to 14 positions for a better swap candidate
-	      let swapped = false;
-	      for (let j = i + 1; j < Math.min(result.length, i + 15); j++) {
-	        const a = result[i].artistId, b = result[j].artistId;
-	        const prevA = result[i - 1]?.artistId, nextB = result[j + 1]?.artistId;
-	        if (b !== a && b !== prevA && a !== nextB) {
-	          [result[i], result[j]] = [result[j], result[i]];
-	          swapped = true;
-	          repairs++;
-	          break;
-	        }
-	      }
-	
-	      // If not fixed, try swapping backwards up to 15 positions
-	      if (!swapped) {
-	        for (let j = Math.max(0, i - 15); j < i - 1; j++) {
-	          const a = result[i].artistId, b = result[j].artistId;
-	          const prevB = result[j - 1]?.artistId, nextA = result[i + 1]?.artistId;
-	          if (b !== a && a !== prevB && b !== nextA) {
-	            [result[i], result[j]] = [result[j], result[i]];
-	            repairs++;
-	            break;
-	          }
-	        }
-	      }
+	      const swapIdx = (i + Math.floor(total / 2)) % total;
+	      [result[i], result[swapIdx]] = [result[swapIdx], result[i]];
+	      repairs++;
 	    }
 	  }
 	
-	  // Optional secondary repair: global random swap fallback
-	  for (let i = 1; i < result.length; i++) {
-	    if (result[i].artistId === result[i - 1].artistId) {
-	      const j = Math.floor(Math.random() * result.length);
-	      if (Math.abs(i - j) > 3 && result[j].artistId !== result[i].artistId) {
-	        [result[i], result[j]] = [result[j], result[i]];
-	        repairs++;
-	      }
-	    }
-	  }
-	
-	  console.log(`🔧 Anti-adjacency repair completed — ${repairs} swaps made`);
-	
+	  console.log(`🔀 Fair shuffle complete — ${repairs} adjacency fixes made`);
 	  return result;
 	}
-	  
-	// Insertion-based global rebalance that *makes room* by shifting
+
 	function enforceSpacingByInsertion(tracks, tolerance = 0.5, maxRounds = 10) {
 	  const total = tracks.length;
 	  let moved = 0;
 	
-	  // Helper: safe modulo to keep indices in [0, total)
-	  const norm = (i) => ((i % total) + total) % total;
-	
-	  // Optional: avoid inserting adjacent to same-artist if possible
-	  function findNearTargetIndex(arr, artistId, target, idealStep) {
-	    // Try exact target first
-	    const leftOk  = arr[target - 1]?.artistId !== artistId;
-	    const rightOk = arr[target]?.artistId     !== artistId &&
-	                    arr[target + 1]?.artistId !== artistId;
-	
-	    if (leftOk && rightOk) return target;
-	
-	    // Search a small window around the target to avoid adjacency
-	    const window = Math.max(2, Math.floor(idealStep * 0.05)); // 5% wiggle
-	    for (let d = 1; d <= window; d++) {
-	      const t1 = norm(target + d);
-	      const t2 = norm(target - d);
-	      if (arr[t1 - 1]?.artistId !== artistId &&
-	          arr[t1]?.artistId     !== artistId &&
-	          arr[t1 + 1]?.artistId !== artistId) return t1;
-	      if (arr[t2 - 1]?.artistId !== artistId &&
-	          arr[t2]?.artistId     !== artistId &&
-	          arr[t2 + 1]?.artistId !== artistId) return t2;
-	    }
-	    return target; // fall back
+	  // Helper: detect adjacency
+	  function tooClose(a, b) {
+	    return a.artistId === b.artistId;
 	  }
 	
 	  for (let round = 0; round < maxRounds; round++) {
-	    let anyMovedThisRound = false;
+	    let changed = false;
 	
-	    // Recompute positions fresh each round (indices shift after insertions)
-	    const posByArtist = new Map();
-	    for (let i = 0; i < total; i++) {
-	      const a = tracks[i].artistId;
-	      if (!posByArtist.has(a)) posByArtist.set(a, []);
-	      posByArtist.get(a).push(i);
-	    }
+	    for (let i = 1; i < total; i++) {
+	      if (tooClose(tracks[i], tracks[i - 1])) {
+	        // Find a swap position far away (~half playlist apart)
+	        let target = (i + Math.floor(total / 2)) % total;
 	
-	    for (const [artist, posList] of posByArtist.entries()) {
-	      const count = posList.length;
-	      if (count < 2) continue;
+	        // Try a few nearby positions if target still conflicts
+	        for (let j = 0; j < 10; j++) {
+	          const test = (target + j) % total;
+	          if (!tooClose(tracks[i], tracks[test]) &&
+	              !tooClose(tracks[i - 1], tracks[test]) &&
+	              !tooClose(tracks[test], tracks[test - 1] || {})) {
+	            target = test;
+	            break;
+	          }
+	        }
 	
-	      const idealStep = total / count;
-	      const minDist   = Math.max(2, Math.floor(idealStep * tolerance));
-	
-	      for (let k = 1; k < posList.length; k++) {
-	        // NOTE: indices may be stale after moves in this round; re-derive quickly
-	        // by scanning from last known position. For simplicity, we re-read current
-	        // indices from the array when needed:
-	        const prevIdx = posList[k - 1];
-	        const currIdx = posList[k];
-			const dist = currIdx - prevIdx;
-			  
-	        if (dist >= minDist) continue;
-	
-			// 🧠 Debug log
-			console.log(
-			  `⚠️ [${artist}] distance ${dist} < ${minDist} (ideal ${idealStep.toFixed(1)}). Moving track from ${currIdx} → near ${Math.round(prevIdx + idealStep)}`
-			);
-			  
-	        // Compute desired spot near prev + idealStep (wrap)
-	        let target = norm(Math.round(prevIdx + idealStep));
-	
-	        // Remove track at currIdx and insert near target
-	        const [song] = tracks.splice(currIdx, 1);
-	
-	        // Adjust target if we removed an element before it
-	        if (currIdx < target) target--;
-	
-	        // Try to avoid creating new adjacency with same artist
-	        target = findNearTargetIndex(tracks, artist, target, idealStep);
-	
-	        tracks.splice(target, 0, song);
+	        [tracks[i], tracks[target]] = [tracks[target], tracks[i]];
 	        moved++;
-	        anyMovedThisRound = true;
-		  }
+	        changed = true;
+	      }
 	    }
 	
-		if (!anyMovedThisRound && round > 3) break;
+	    if (!changed) break;
 	  }
-	  console.log(`📐 Insertion rebalance moved ${moved} tracks across up to ${maxRounds} rounds`);
+	
+	  console.log(`📐 Spacing rebalance moved ${moved} tracks across ${maxRounds} rounds`);
 	  return tracks;
 	}
+	
 
 
 	// =====================
