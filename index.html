@@ -420,22 +420,22 @@
 	
 	  return result;
 	}
-	  function rebalanceByInsertionSmart(tracks, tolerance = 0.25, maxPasses = 50) {
-		  let result = [...tracks];
+	  function rebalanceByForwardSwap(tracks, tolerance = 0.2, maxPasses = 10) {
+		  const result = [...tracks];
 		  const total = result.length;
-		  let totalMoves = 0;
+		  let totalSwaps = 0;
 
 		  for (let pass = 0; pass < maxPasses; pass++) {
-			  let movedThisPass = 0;
+			  let swappedThisPass = 0;
 
-			  const byArtist = new Map();
+			  const positionsByArtist = new Map();
 			  for (let i = 0; i < total; i++) {
 				  const a = result[i].artistId;
-				  if (!byArtist.has(a)) byArtist.set(a, []);
-				  byArtist.get(a).push(i);
+				  if (!positionsByArtist.has(a)) positionsByArtist.set(a, []);
+				  positionsByArtist.get(a).push(i);
 			  }
 
-			  for (const [artist, posList] of byArtist.entries()) {
+			  for (const [artist, posList] of positionsByArtist.entries()) {
 				  const count = posList.length;
 				  if (count < 2) continue;
 
@@ -448,21 +448,26 @@
 					  const dist = curr - prev;
 
 					  if (dist < minDist) {
-						  const idealPos = Math.floor((prev + idealStep) % total);
-						  const [song] = result.splice(curr, 1);
-						  result.splice(idealPos, 0, song);
-						  movedThisPass++;
+						  // find a swap target further away with a different artist
+						  for (let j = curr + 1; j < Math.min(total, curr + idealStep); j++) 
+							  if (!result[j] || result[j].artistId !== artist) {
+								  [result[curr], result[j]] = [result[j], result[curr]];
+								  swappedThisPass++;
+								  break;
+							  }
 					  }
 				  }
 			  }
-
-			  totalMoves += movedThisPass;
-			  if (movedThisPass === 0) break; // done early
 		  }
 
-		  console.log(`🎯 Smart rebalance finished — ${totalMoves} songs repositioned after iterative passes.`);
-		  return result;
+		  totalSwaps += swappedThisPass;
+		  if (swappedThisPass === 0) break; // stop early
 	  }
+
+	  console.log(`🎯 Forward-swap rebalance completed — ${totalSwaps} swaps in ${maxPasses} passes`);
+	  return result;
+	  }
+
 
 	// =====================
 	// Analysis table + closest distance debug
@@ -616,8 +621,9 @@
         countsEl.textContent = `${total} tracks • ${byArtist.size} artists • densest artist has ${maxArtist} tracks (ideal spacing ≈ ${idealStep(maxArtist)})`;
 
         proposed = fairShuffle(cachedTracks);
-		proposed = rebalanceByInsertionSmart(proposed, 0.2); // 20% threshold
-		analyzeArtistSpacing(proposed);
+		const before = analyzeArtistSpacing(proposed);
+		proposed = rebalanceByForwardSwap(proposed, 0.3); // 20% threshold
+		const after = analyzeArtistSpacing(proposed);
         renderFirst50();
         previewCard.classList.remove('hidden');
         shuffleBtn.disabled = false;
