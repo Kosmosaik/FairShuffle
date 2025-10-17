@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.31</title>
+  <title>Spotify Fair Artist Shuffle v0.32</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -30,7 +30,7 @@
     a.link{color:#7ed7ff}
     footer{max-width:960px;margin:32px auto;padding:0 16px 24px;color:var(--muted)}
   </style>
-  <script src="https://cdn.counter.dev/script.js" data-id="4efac50c-1140-4ff2-b4bb-b3459acc6129" data-utcoffset="1"></script>
+  <script src="https://cdn.counter.dev/script.js" data-id="4efac50c-1140-4ff2-b4bb-b3459acc6129" data-utcoffset="2"></script>
 </head>
 <body>
   <header>
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.31</h1>
+	    <h1 style="margin:0;">FairShuffle v0.32</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -475,14 +475,12 @@
 	        // NOTE: indices may be stale after moves in this round; re-derive quickly
 	        // by scanning from last known position. For simplicity, we re-read current
 	        // indices from the array when needed:
-	        const prevIdx = tracks.findIndex((t, idx) => t.artistId === artist && idx >= posList[k - 1]);
-	        const currIdx = tracks.findIndex((t, idx) => t.artistId === artist && idx >  prevIdx);
-	
-	        if (prevIdx === -1 || currIdx === -1) continue;
-	
-	        const dist = currIdx - prevIdx;
-	        if (dist >= minDist) continue;
+	        const prevIdx = posList[k - 1];
+	        const currIdx = posList[k];
+			const dist = currIdx - prevIdx;
 			  
+	        if (dist >= minDist) continue;
+	
 			// 🧠 Debug log
 			console.log(
 			  `⚠️ [${artist}] distance ${dist} < ${minDist} (ideal ${idealStep.toFixed(1)}). Moving track from ${currIdx} → near ${Math.round(prevIdx + idealStep)}`
@@ -503,11 +501,7 @@
 	        tracks.splice(target, 0, song);
 	        moved++;
 	        anyMovedThisRound = true;
-	
-	        // After we move one for this artist, break to recompute positions next round.
-	        // This keeps the logic simple and prevents chasing stale indices too far.
-	        break;
-	      }
+		  }
 	    }
 	
 	    if (!anyMovedThisRound) break;
