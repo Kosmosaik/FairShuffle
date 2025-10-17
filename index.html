@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v1.28</title>
+  <title>Spotify Fair Artist Shuffle v0.30</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v1.28</h1>
+	    <h1 style="margin:0;">FairShuffle v0.30</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -354,7 +354,7 @@
 	  // Step 3: place tracks with variable jitter + offset
 	  for (const [artist, songs] of artists) {
 	    const idealStep = total / songs.length;
-	    const jitterScale = idealStep * 0.2; // 25% jitter
+	    const jitterScale = idealStep * 0.15; // 15% jitter
 	    for (let i = 0; i < songs.length; i++) {
 	      let pos = Math.floor((i * idealStep + offsets[artist]) % total);
 	      pos += Math.floor((Math.random() - 0.5) * jitterScale);
@@ -420,54 +420,97 @@
 	
 	  return result;
 	}
-	function rebalanceByForwardSwap(tracks, tolerance = 0.3, maxPasses = 50) {
-		const result = [...tracks];
-		const total = result.length;
-		let totalSwaps = 0;
-
-		for (let pass = 0; pass < maxPasses; pass++) {
-			let swappedThisPass = 0;
-
-			const positionsByArtist = new Map();
-			for (let i = 0; i < total; i++) {
-				const a = result[i].artistId;
-				if (!positionsByArtist.has(a)) positionsByArtist.set(a, []);
-				positionsByArtist.get(a).push(i);
-			}
-
-			for (const [artist, posList] of positionsByArtist.entries()) {
-				const count = posList.length;
-				if (count < 2) continue;
-
-				const idealStep = total / count;
-				const minDist = idealStep * tolerance;
-
-				for (let i = 1; i < posList.length; i++) {
-					const prev = posList[i - 1];
-					const curr = posList[i];
-					const dist = curr - prev;
-
-					if (dist < minDist) {
-						// find a swap target further away with a different artist
-						for (let j = curr + 1; j < Math.min(total, curr + idealStep); j++) {
-							if (!result[j] || result[j].artistId !== artist) {
-								[result[curr], result[j]] = [result[j], result[curr]];
-								swappedThisPass++;
-								break;
-							}
-						}
-					}
-				}
-			}
-
-			totalSwaps += swappedThisPass;
-			if (swappedThisPass === 0) break; // stop early if stable
-		}
-
-		console.log(`🎯 Forward-swap rebalance completed — ${totalSwaps} swaps in ${maxPasses} passes`);
-		return result;
+	  
+	// Insertion-based global rebalance that *makes room* by shifting
+	function enforceSpacingByInsertion(tracks, tolerance = 0.5, maxRounds = 10) {
+	  const total = tracks.length;
+	  let moved = 0;
+	
+	  // Helper: safe modulo to keep indices in [0, total)
+	  const norm = (i) => ((i % total) + total) % total;
+	
+	  // Optional: avoid inserting adjacent to same-artist if possible
+	  function findNearTargetIndex(arr, artistId, target, idealStep) {
+	    // Try exact target first
+	    const leftOk  = arr[target - 1]?.artistId !== artistId;
+	    const rightOk = arr[target]?.artistId     !== artistId &&
+	                    arr[target + 1]?.artistId !== artistId;
+	
+	    if (leftOk && rightOk) return target;
+	
+	    // Search a small window around the target to avoid adjacency
+	    const window = Math.max(2, Math.floor(idealStep * 0.05)); // 5% wiggle
+	    for (let d = 1; d <= window; d++) {
+	      const t1 = norm(target + d);
+	      const t2 = norm(target - d);
+	      if (arr[t1 - 1]?.artistId !== artistId &&
+	          arr[t1]?.artistId     !== artistId &&
+	          arr[t1 + 1]?.artistId !== artistId) return t1;
+	      if (arr[t2 - 1]?.artistId !== artistId &&
+	          arr[t2]?.artistId     !== artistId &&
+	          arr[t2 + 1]?.artistId !== artistId) return t2;
+	    }
+	    return target; // fall back
+	  }
+	
+	  for (let round = 0; round < maxRounds; round++) {
+	    let anyMovedThisRound = false;
+	
+	    // Recompute positions fresh each round (indices shift after insertions)
+	    const posByArtist = new Map();
+	    for (let i = 0; i < total; i++) {
+	      const a = tracks[i].artistId;
+	      if (!posByArtist.has(a)) posByArtist.set(a, []);
+	      posByArtist.get(a).push(i);
+	    }
+	
+	    for (const [artist, posList] of posByArtist.entries()) {
+	      const count = posList.length;
+	      if (count < 2) continue;
+	
+	      const idealStep = total / count;
+	      const minDist   = Math.max(2, Math.floor(idealStep * tolerance));
+	
+	      for (let k = 1; k < posList.length; k++) {
+	        // NOTE: indices may be stale after moves in this round; re-derive quickly
+	        // by scanning from last known position. For simplicity, we re-read current
+	        // indices from the array when needed:
+	        const prevIdx = tracks.findIndex((t, idx) => t.artistId === artist && idx >= posList[k - 1]);
+	        const currIdx = tracks.findIndex((t, idx) => t.artistId === artist && idx >  prevIdx);
+	
+	        if (prevIdx === -1 || currIdx === -1) continue;
+	
+	        const dist = currIdx - prevIdx;
+	        if (dist >= minDist) continue;
+	
+	        // Compute desired spot near prev + idealStep (wrap)
+	        let target = norm(Math.round(prevIdx + idealStep));
+	
+	        // Remove track at currIdx and insert near target
+	        const [song] = tracks.splice(currIdx, 1);
+	
+	        // Adjust target if we removed an element before it
+	        if (currIdx < target) target--;
+	
+	        // Try to avoid creating new adjacency with same artist
+	        target = findNearTargetIndex(tracks, artist, target, idealStep);
+	
+	        tracks.splice(target, 0, song);
+	        moved++;
+	        anyMovedThisRound = true;
+	
+	        // After we move one for this artist, break to recompute positions next round.
+	        // This keeps the logic simple and prevents chasing stale indices too far.
+	        break;
+	      }
+	    }
+	
+	    if (!anyMovedThisRound) break;
+	  }
+	
+	  console.log(`📐 Insertion rebalance moved ${moved} tracks across up to ${maxRounds} rounds`);
+	  return tracks;
 	}
-
 
 
 	// =====================
@@ -623,7 +666,7 @@
 
         proposed = fairShuffle(cachedTracks);
 		const before = analyzeArtistSpacing(proposed);
-		proposed = rebalanceByForwardSwap(proposed, 0.3); // 20% threshold
+		proposed = enforceSpacingByInsertion(proposed, 0.5, 10);
 		const after = analyzeArtistSpacing(proposed);
         renderFirst50();
         previewCard.classList.remove('hidden');
