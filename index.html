@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.37</title>
+  <title>Spotify Fair Artist Shuffle v0.38</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.37</h1>
+	    <h1 style="margin:0;">FairShuffle v0.38</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -560,6 +560,39 @@
 	  console.log(`⚠️ Closest circular distance found: ${globalMin} between ${offenders.join(', ')}`);
 	
 	  // (UI table code can be updated similarly to show Ideal as a column)
+		// ---- OPTIONAL: rebuild on-page tables ----
+		document.querySelectorAll("#analysisTable").forEach(e => e.remove());
+		const makeTable = (title, rows) => `
+		  <div style="margin:24px 0;">
+			<h4 style="margin-bottom:8px;">${title}</h4>
+			<table style="width:95%; border-collapse:collapse; font-family:monospace; color:#cfe3ff;
+						  background:#0c121a; border-radius:12px; overflow:hidden;">
+			  <thead style="background:#111a22;">
+				<tr><th style="text-align:left;padding:6px;">Artist</th>
+					<th>Tracks</th><th>Ideal</th><th>Avg Dist (circ)</th><th>Min Dist</th></tr>
+			  </thead>
+			  <tbody>
+				${rows.map(r => `
+				  <tr>
+					<td style="padding:6px;">${r.artist}</td>
+					<td style="text-align:center;">${r.count}</td>
+					<td style="text-align:center;">${r.idealDist}</td>
+					<td style="text-align:center;">${r.avgDist}</td>
+					<td style="text-align:center;">${r.minDist}</td>
+				  </tr>`).join("")}
+			  </tbody>
+			</table>
+		  </div>`;
+		
+		const html = `
+		  <div id="analysisTable">
+			<h3 style="margin-bottom:12px;">Artist Spacing Summary</h3>
+			${makeTable("Top 25 artists (by track count)", topByCount)}
+			${makeTable("25 artists with smallest minimum spacing", topByClosest)}
+		  </div>`;
+		document.body.insertAdjacentHTML("beforeend", html);
+		// ---- END optional tables ----
+
 	  return results;
 	}
 
