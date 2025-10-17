@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.43</title>
+  <title>Spotify Fair Artist Shuffle v0.44</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.43</h1>
+	    <h1 style="margin:0;">FairShuffle v0.44</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -424,8 +424,6 @@
 	    const posByArtist = buildPositions(tracks);
 	
 	    // Iterate artists; on the first fix we restart the round to keep indices fresh
-	    outer:
-		// --- Sort artists by their smallest spacing first (tightest offenders first) ---
 		const sortedArtists = [...posByArtist.entries()].sort((a, b) => {
 		  const dA = a[1].length < 2 ? Infinity : Math.min(...a[1].map((v, i, arr) =>
 		    i ? (v - arr[i - 1] + total) % total : total
