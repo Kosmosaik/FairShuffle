@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.34</title>
+  <title>Spotify Fair Artist Shuffle v0.35</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.34</h1>
+	    <h1 style="margin:0;">FairShuffle v0.35</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -389,47 +389,74 @@
 	  return result;
 	}
 
+
+	// =====================
+	// Enforce Spacing By Insertion
+	// =====================
 	function enforceSpacingByInsertion(tracks, tolerance = 0.5, maxRounds = 10) {
 	  const total = tracks.length;
-	  let moved = 0;
+	  const norm = i => ((i % total) + total) % total;
 	
-	  // Helper: detect adjacency
-	  function tooClose(a, b) {
-	    return a.artistId === b.artistId;
+	  // Build map of positions by artist
+	  function getArtistPositions(arr) {
+	    const map = new Map();
+	    for (let i = 0; i < arr.length; i++) {
+	      const a = arr[i].artistId;
+	      if (!map.has(a)) map.set(a, []);
+	      map.get(a).push(i);
+	    }
+	    return map;
 	  }
+	
+	  let moved = 0;
 	
 	  for (let round = 0; round < maxRounds; round++) {
 	    let changed = false;
+	    const posByArtist = getArtistPositions(tracks);
 	
-	    for (let i = 1; i < total; i++) {
-	      if (tooClose(tracks[i], tracks[i - 1])) {
-	        // Find a swap position far away (~half playlist apart)
-	        let target = (i + Math.floor(total / 2)) % total;
+	    for (const [artist, posList] of posByArtist.entries()) {
+	      const count = posList.length;
+	      if (count < 2) continue;
 	
-	        // Try a few nearby positions if target still conflicts
-	        for (let j = 0; j < 10; j++) {
-	          const test = (target + j) % total;
-	          if (!tooClose(tracks[i], tracks[test]) &&
-	              !tooClose(tracks[i - 1], tracks[test]) &&
-	              !tooClose(tracks[test], tracks[test - 1] || {})) {
-	            target = test;
-	            break;
+	      const idealStep = total / count;
+	      const minAllowed = idealStep * tolerance;
+	
+	      for (let k = 1; k < posList.length; k++) {
+	        const prev = posList[k - 1];
+	        const curr = posList[k];
+	        const dist = curr - prev;
+	
+	        if (dist < minAllowed) {
+	          // Too close — move track to better position
+	          let target = Math.round(prev + idealStep);
+	          target = norm(target);
+	
+	          // Avoid adjacency with same artist
+	          for (let tryOffset = 0; tryOffset < total; tryOffset++) {
+	            const test = norm(target + tryOffset);
+	            const left = tracks[test - 1]?.artistId;
+	            const right = tracks[test + 1]?.artistId;
+	            if (tracks[test]?.artistId !== artist && left !== artist && right !== artist) {
+	              target = test;
+	              break;
+	            }
 	          }
-	        }
 	
-	        [tracks[i], tracks[target]] = [tracks[target], tracks[i]];
-	        moved++;
-	        changed = true;
+	          // Move track
+	          const [song] = tracks.splice(curr, 1);
+	          tracks.splice(target, 0, song);
+	          moved++;
+	          changed = true;
+	        }
 	      }
 	    }
 	
 	    if (!changed) break;
 	  }
 	
-	  console.log(`📐 Spacing rebalance moved ${moved} tracks across ${maxRounds} rounds`);
+	  console.log(`🧩 Enforced ideal spacing — moved ${moved} tracks`);
 	  return tracks;
 	}
-	
 
 
 	// =====================
@@ -574,11 +601,14 @@
         const idealStep = (aCount)=> (total / aCount).toFixed(1);
         countsEl.textContent = `${total} tracks • ${byArtist.size} artists • densest artist has ${maxArtist} tracks (ideal spacing ≈ ${idealStep(maxArtist)})`;
 
+// ==============================================		  
         proposed = fairShuffle(cachedTracks);
 		const before = analyzeArtistSpacing(proposed, true);
 		proposed = enforceSpacingByInsertion(proposed, 0.5, 10);
 		const after = analyzeArtistSpacing(proposed, true);
         renderFirst50();
+// ==============================================	
+		  
         previewCard.classList.remove('hidden');
         shuffleBtn.disabled = false;
         hideProgress();
