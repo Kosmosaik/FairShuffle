@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.39</title>
+  <title>Spotify Fair Artist Shuffle v0.40</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.39</h1>
+	    <h1 style="margin:0;">FairShuffle v0.40</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -557,7 +557,11 @@
 	
 	  // sort examples
 	  const topByCount = [...results].sort((a, b) => b.count - a.count).slice(0, 25);
-	  const topByClosest = [...results].sort((a, b) => a.minDist - b.minDist).slice(0, 25);
+	  const topByClosest = [...results]
+		  .filter(r => r.count > 1)              // ✅ exclude single-track artists
+		  .sort((a, b) => a.minDist - b.minDist)
+		  .slice(0, 25);
+
 	
 	  console.table(topByCount.map(r => ({
 	    Artist: r.artist, Tracks: r.count, Ideal: r.idealDist, 'Avg Dist (circ)': r.avgDist, 'Min Dist': r.minDist
