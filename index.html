@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.35</title>
+  <title>Spotify Fair Artist Shuffle v0.36</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.35</h1>
+	    <h1 style="margin:0;">FairShuffle v0.36</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -393,12 +393,11 @@
 	// =====================
 	// Enforce Spacing By Insertion
 	// =====================
-	function enforceSpacingByInsertion(tracks, tolerance = 0.5, maxRounds = 10) {
+	function enforceSpacingByInsertion(tracks, tolerance = 0.7, maxRounds = 3) {
 	  const total = tracks.length;
 	  const norm = i => ((i % total) + total) % total;
 	
-	  // Build map of positions by artist
-	  function getArtistPositions(arr) {
+	  function buildMap(arr) {
 	    const map = new Map();
 	    for (let i = 0; i < arr.length; i++) {
 	      const a = arr[i].artistId;
@@ -412,7 +411,7 @@
 	
 	  for (let round = 0; round < maxRounds; round++) {
 	    let changed = false;
-	    const posByArtist = getArtistPositions(tracks);
+	    const posByArtist = buildMap(tracks);
 	
 	    for (const [artist, posList] of posByArtist.entries()) {
 	      const count = posList.length;
@@ -421,30 +420,47 @@
 	      const idealStep = total / count;
 	      const minAllowed = idealStep * tolerance;
 	
+	      // Sort positions to ensure correct order
+	      posList.sort((a, b) => a - b);
+	
 	      for (let k = 1; k < posList.length; k++) {
 	        const prev = posList[k - 1];
 	        const curr = posList[k];
-	        const dist = curr - prev;
+	        const dist = (curr - prev + total) % total;
 	
 	        if (dist < minAllowed) {
-	          // Too close — move track to better position
-	          let target = Math.round(prev + idealStep);
-	          target = norm(target);
+	          // too close → move the later one further away
+	          let bestTarget = null;
+	          let bestDist = -1;
 	
-	          // Avoid adjacency with same artist
-	          for (let tryOffset = 0; tryOffset < total; tryOffset++) {
-	            const test = norm(target + tryOffset);
+	          // search in steps of ~idealStep forward
+	          for (let step = 1; step <= count; step++) {
+	            const candidate = norm(prev + step * idealStep);
+	            // measure distance to nearest same-artist neighbor
+	            const distances = posList.map(p => Math.abs(candidate - p));
+	            const nearest = Math.min(...distances);
+	            if (nearest > bestDist && nearest >= minAllowed) {
+	              bestDist = nearest;
+	              bestTarget = candidate;
+	            }
+	          }
+	
+	          // fallback if no safe spot found
+	          if (bestTarget == null) bestTarget = norm(prev + idealStep);
+	
+	          // avoid adjacency (local)
+	          for (let j = 0; j < total; j++) {
+	            const test = norm(bestTarget + j);
 	            const left = tracks[test - 1]?.artistId;
 	            const right = tracks[test + 1]?.artistId;
 	            if (tracks[test]?.artistId !== artist && left !== artist && right !== artist) {
-	              target = test;
+	              bestTarget = test;
 	              break;
 	            }
 	          }
 	
-	          // Move track
 	          const [song] = tracks.splice(curr, 1);
-	          tracks.splice(target, 0, song);
+	          tracks.splice(bestTarget, 0, song);
 	          moved++;
 	          changed = true;
 	        }
@@ -454,7 +470,7 @@
 	    if (!changed) break;
 	  }
 	
-	  console.log(`🧩 Enforced ideal spacing — moved ${moved} tracks`);
+	  console.log(`🧩 Enforced ideal spacing (rounds=${maxRounds}, tolerance=${tolerance}) — moved ${moved} tracks`);
 	  return tracks;
 	}
 
