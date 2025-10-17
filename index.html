@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.38</title>
+  <title>Spotify Fair Artist Shuffle v0.39</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.38</h1>
+	    <h1 style="margin:0;">FairShuffle v0.39</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -429,7 +429,7 @@
 	
 	      for (let k = 1; k < posList.length; k++) {
 	        const prev = posList[k - 1];
-	        const curr = posList[k];
+	        const curr = posList[k % posList.length];
 	        const dist = (curr - prev + total) % total;   // ✅ circular gap
 	
 	        if (dist < minAllowed) {
@@ -484,7 +484,12 @@
 	          target = norm(target);
 	
 	          tracks.splice(target, 0, song);
-	
+				console.log(
+				  `🎯 Moved "${artist}" track (${k}/${count}) ` +
+				  `from ${curr} → ${target} | idealStep=${idealStep.toFixed(1)}, ` +
+				  `minAllowed=${minAllowed.toFixed(1)}, round=${round + 1}`
+				);
+
 	          moved++;
 	          changed = true;
 	          break outer;                         // ✅ restart round with fresh positions
