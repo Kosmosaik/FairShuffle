@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v1.27</title>
+  <title>Spotify Fair Artist Shuffle v1.28</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v1.27</h1>
+	    <h1 style="margin:0;">FairShuffle v1.28</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -377,9 +377,9 @@
 	  let repairs = 0;
 	  for (let i = 1; i < result.length; i++) {
 	    if (result[i].artistId === result[i - 1].artistId) {
-	      // Look ahead up to 6 positions for a better swap candidate
+	      // Look ahead up to 14 positions for a better swap candidate
 	      let swapped = false;
-	      for (let j = i + 1; j < Math.min(result.length, i + 7); j++) {
+	      for (let j = i + 1; j < Math.min(result.length, i + 15); j++) {
 	        const a = result[i].artistId, b = result[j].artistId;
 	        const prevA = result[i - 1]?.artistId, nextB = result[j + 1]?.artistId;
 	        if (b !== a && b !== prevA && a !== nextB) {
@@ -390,9 +390,9 @@
 	        }
 	      }
 	
-	      // If not fixed, try swapping backwards up to 6 positions
+	      // If not fixed, try swapping backwards up to 15 positions
 	      if (!swapped) {
-	        for (let j = Math.max(0, i - 6); j < i - 1; j++) {
+	        for (let j = Math.max(0, i - 15); j < i - 1; j++) {
 	          const a = result[i].artistId, b = result[j].artistId;
 	          const prevB = result[j - 1]?.artistId, nextA = result[i + 1]?.artistId;
 	          if (b !== a && a !== prevB && b !== nextA) {
@@ -420,7 +420,7 @@
 	
 	  return result;
 	}
-	function rebalanceByForwardSwap(tracks, tolerance = 0.2, maxPasses = 10) {
+	function rebalanceByForwardSwap(tracks, tolerance = 0.3, maxPasses = 50) {
 		const result = [...tracks];
 		const total = result.length;
 		let totalSwaps = 0;
