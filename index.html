@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spotify Fair Artist Shuffle v0.41</title>
+  <title>Spotify Fair Artist Shuffle v0.42</title>
   <style>
     :root{
       --bg:#0b0f14; --card:#121923; --muted:#9fb0c3; --accent:#1db954; --danger:#ff5c5c; --text:#e8f0f6;
@@ -43,7 +43,7 @@
 	  gap:10px;
 	">
 	  <div>
-	    <h1 style="margin:0;">FairShuffle v0.41</h1>
+	    <h1 style="margin:0;">FairShuffle v0.42</h1>
 	    <p style="margin:4px 0 0 0;">A smarter Spotify playlist shuffler</p>
 	  </div>
 	
@@ -413,7 +413,12 @@
 	  }
 	
 	  let moved = 0;
-	
+	  const artistNames = new Map();
+	  for (const t of tracks) {
+	    if (!artistNames.has(t.artistId)) {
+	      artistNames.set(t.artistId, t.artist || t.artistName || t.artistId);
+	    }
+	  }
 	  for (let round = 0; round < maxRounds; round++) {
 	    let changed = false;
 	    const posByArtist = buildPositions(tracks);
@@ -484,11 +489,8 @@
 	          target = norm(target);
 	
 	          tracks.splice(target, 0, song);
-				console.log(
-				  `🎯 Moved "${artist}" track (${k}/${count}) ` +
-				  `from ${curr} → ${target} | idealStep=${idealStep.toFixed(1)}, ` +
-				  `minAllowed=${minAllowed.toFixed(1)}, round=${round + 1}`
-				);
+			  const name = artistNames.get(artist) || artist;
+			  console.log(`🎯 Moved "${name}" track to index ${target} (round ${round + 1})`);
 
 	          moved++;
 	          changed = true;
