@@ -393,7 +393,7 @@
 	// =====================
 	// Enforce Spacing By Insertion
 	// =====================
-	function enforceSpacingByInsertion(tracks, tolerance = 0.7, maxRounds = 10) {
+	function enforceSpacingByInsertion(tracks, tolerance = 0.7, maxRounds = 25) {
 	  const total = tracks.length;
 	  const norm = i => ((i % total) + total) % total;
 	  const circDist = (a, b) => {
@@ -671,7 +671,7 @@
 // ==============================================		  
         proposed = fairShuffle(cachedTracks);
 		const before = analyzeArtistSpacing(proposed);
-		proposed = enforceSpacingByInsertion(proposed, 0.7, 10);
+		proposed = enforceSpacingByInsertion(proposed, 0.7, 25);
 		const after = analyzeArtistSpacing(proposed);
         renderFirst50();
 // ==============================================	
